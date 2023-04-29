@@ -74,14 +74,17 @@ func makePipeline(input chan int) chan bool {
 // Первая стадия пайплайна.
 // Фильтрация отрицатьельных чисел из канала in в канал out
 func notNegPipe(done chan bool, in <-chan int, out chan<- int) {
+	fmt.Println("initializing notNegPipe goroutine")
 	go func() {
 		for {
 			select {
 			case d := <-in:
 				if d >= 0 {
+					fmt.Printf("notNegPipe: send %v to next chan\n", d)
 					out <- d
 				}
 			case <-done:
+				fmt.Println("closing notNegPipe goroutine")
 				return
 			}
 		}
@@ -91,14 +94,17 @@ func notNegPipe(done chan bool, in <-chan int, out chan<- int) {
 // Вторая стадия пайплайна
 // Фильтрация чисел не кратных 3 из канала in в канал out
 func divThreePipe(done chan bool, in <-chan int, out chan<- int) {
+	fmt.Println("initializing divThreePipe")
 	go func() {
 		for {
 			select {
 			case d := <-in:
 				if d%3 == 0 && d != 0 {
+					fmt.Printf("devThreePipe: send %v to next chan\n", d)
 					out <- d
 				}
 			case <-done:
+				fmt.Println("closing divThreePipe goroutine")
 				return
 			}
 		}
@@ -108,12 +114,15 @@ func divThreePipe(done chan bool, in <-chan int, out chan<- int) {
 // Третья стадия пайплайна
 // Буферизация данных из канала in в кольцевой буфер buff
 func buffPipe(done chan bool, in chan int, buff *RingBuff) {
+	fmt.Println("initializing buffPipe")
 	go func() {
 		for {
 			select {
 			case d := <-in:
+				fmt.Printf("buffPipe: send %v to ring buff\n", d)
 				buff.Push(d)
 			case <-done:
+				fmt.Println("closing buffPipe goroutine")
 				return
 			}
 		}
@@ -125,15 +134,21 @@ func buffPipe(done chan bool, in chan int, buff *RingBuff) {
 // выводит в консоль содержимое буфера, если он был не пустой
 func consumer(done chan bool, buff *RingBuff) {
 	var ticker *time.Ticker = time.NewTicker(Duration)
+	fmt.Println("initializing consumer")
 	go func() {
 		for {
 			select {
 			case <-ticker.C:
+				fmt.Println("consumer: empting ring buffer")
 				res := buff.Get()
 				if len(res) > 0 {
+					fmt.Println("consumer: ring buffer not empty")
 					fmt.Printf("result data: %v\n", res)
+				} else {
+					fmt.Println("consumer: ring buffer is empty")
 				}
 			case <-done:
+				fmt.Println("closing consumer goroutine")
 				return
 			}
 		}
@@ -166,4 +181,5 @@ func main() {
 		}
 		input <- d
 	}
+	time.Sleep(time.Second)
 }
